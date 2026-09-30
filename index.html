@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fazenda Feliz & Cloud Sync</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Fredoka', 'cursive']
+                    },
+                    colors: {
+                        farmGreen: '#2e7d32',
+                        farmDarkGreen: '#1b5e20',
+                        farmDirt: '#5d4037',
+                        farmDirtLight: '#795548',
+                        farmNight: '#0d1b2a',
+                        farmGold: '#ffb300'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            background-color: #0d1b2a;
+            color: #f1f5f9;
+        }
+
+        .font-display {
+            font-family: 'Fredoka', cursive;
+        }
+
+        /* Animações e Efeitos */
+        @keyframes pulse-growth {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .ready-harvest {
+            animation: pulse-growth 1.5s infinite ease-in-out;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2e7d32;
+            border-radius: 4px;
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-panel-night {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        /* Float Text Animation */
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+        }
+        .float-text {
+            position: absolute;
+            animation: float-up 1.2s forwards ease-out;
+            pointer-events: none;
+            font-weight: 800;
+            z-index: 50;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden pb-20 md:pb-0">
+
+<!-- CABEÇALHO GLOBAL -->
+<header id="game-header" class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 shadow-lg transition-colors duration-700">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+        
+        <!-- Status do Ciclo Dia/Noite & Tempo de Jogo -->
+        <div class="flex items-center space-x-3">
+            <div id="day-night-indicator" class="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center space-x-1.5 shadow-sm">
+                <i id="day-night-icon" class="fa-solid fa-sun text-amber-400 text-sm"></i>
+                <span id="day-night-text" class="font-display">Dia (☀️ 12:00)</span>
+            </div>
+
+            <!-- Tempo de Tela / Playtime -->
+            <div class="hidden sm:flex items-center space-x-1 text-xs text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-stopwatch text-emerald-400"></i>
+                <span id="play-time-display">00h 00m 00s</span>
+            </div>
+        </div>
+
+        <!-- Recursos Globais (Ouro & Nível) -->
+        <div class="flex items-center space-x-3">
+            <!-- Nível e XP -->
+            <div class="flex items-center space-x-1.5 bg-indigo-950/80 border border-indigo-500/30 px-2.5 py-1 rounded-xl">
+                <div class="w-5 h-5 rounded-full bg-indigo-500 text-white font-bold text-[10px] flex items-center justify-center font-display" id="player-level">1</div>
+                <div class="w-16 bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                    <div id="xp-bar" class="bg-gradient-to-r from-indigo-500 to-purple-400 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Ouro -->
+            <div class="flex items-center space-x-1.5 bg-amber-950/80 border border-amber-500/40 px-3 py-1 rounded-xl shadow-inner">
+                <i class="fa-solid fa-coins text-amber-400 text-sm animate-bounce"></i>
+                <span id="gold-display" class="font-display font-bold text-amber-300 text-sm">0</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- CONTAINER PRINCIPAL DE TELAS -->
+<main class="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-5 relative">
+
+    <!-- SEÇÃO 1: A FAZENDA (PLANTAR E REGAR) -->
+    <section id="view-farm" class="space-y-4">
+        
+        <!-- Barra Superior de Ferramentas de Plantio -->
+        <div class="glass-panel p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+            <div class="flex items-center space-x-2 w-full sm:w-auto">
+                <i class="fa-solid fa-wheat-awn text-emerald-400 text-xl"></i>
+                <div>
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Semente Selecionada</h2>
+                    <p id="selected-seed-name" class="text-sm font-display font-bold text-emerald-400">Trigo (Rápido - 30s)</p>
+                </div>
+            </div>
+
+            <!-- Seletor de Semente -->
+            <div id="seed-selector-container" class="flex items-center space-x-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                <!-- Injetado dinamicamente via JS -->
+            </div>
+        </div>
+
+        <!-- Botões de Ação Rápida -->
+        <div class="flex items-center justify-between gap-2">
+            <button onclick="waterAllPlots()" class="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-blue-900/30 transition flex items-center justify-center space-x-2 active:scale-95">
+                <i class="fa-solid fa-droplet text-cyan-200"></i>
+                <span>Regar Tudo</span>
+            </button>
+
+            <button onclick="harvestAllPlots()" class="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-2 active:scale-95">
+                <i class="fa-solid fa-hand-holding-harvest text-emerald-200"></i>
+                <span>Colher Tudo</span>
+            </button>
+        </div>
+
+        <!-- Grade de Canteiros (Plots da Fazenda) -->
+        <div id="farm-plots-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <!-- Canteiros gerados dinamicamente via JS -->
+        </div>
+    </section>
+
+    <!-- SEÇÃO 2: MERCADO / FEIRA (VENDER FRUTAS) -->
+    <section id="view-market" class="hidden space-y-4">
+        
+        <!-- Status de Abertura do Mercado -->
+        <div id="market-status-banner" class="p-4 rounded-2xl border transition-all duration-500 flex items-center justify-between shadow-lg bg-emerald-950/60 border-emerald-500/40">
+            <div class="flex items-center space-x-3">
+                <div id="market-status-icon" class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div>
+                    <h3 id="market-status-title" class="font-display font-bold text-lg text-white">Mercado Aberto!</h3>
+                    <p id="market-status-desc" class="text-xs text-slate-300">Os feirantes estão prontos para comprar suas colheitas frescas.</p>
+                </div>
+            </div>
+
+            <button id="btn-sell-all" onclick="sellAllCrops()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-bold text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center space-x-1.5">
+                <i class="fa-solid fa-sack-dollar text-base"></i>
+                <span>Vender Tudo</span>
+            </button>
+        </div>
+
+        <!-- Lista de Inventário para Venda -->
+        <div class="glass-panel rounded-2xl p-4 space-y-3">
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-boxes-stacked text-amber-400"></i>
+                <span>Seu Armazém de Frutas e Safras</span>
+            </h4>
+
+            <div id="market-inventory-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Lista de itens no inventário injetada via JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO 3: LOJA DE MELHORIAS (UPGRADES) -->
+    <section id="view-shop" class="hidden space-y-4">
+        <div class="glass-panel p-4 rounded-2xl border border-indigo-500/30 space-y-1">
+            <h3 class="font-display font-bold text-lg text-indigo-300 flex items-center gap-2">
+                <i class="fa-solid fa-wrench text-indigo-400"></i>
+                <span>Oficina de Melhorias da Fazenda</span>
+            </h3>
+            <p class="text-xs text-slate-400">Aumente sua produção, reduza o tempo de crescimento e libere novas frutas raras!</p>
+        </div>
+
+        <div id="upgrades-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Upgrades injetados via JS -->
+        </div>
+    </section>
+
+    <!-- SEÇÃO 4: CASA DA FAZENDA E NUVEM FIREBASE -->
+    <section id="view-house" class="hidden space-y-4">
+        
+        <!-- Card Descanso / Passar Noite -->
+        <div class="glass-panel p-5 rounded-2xl border border-purple-500/30 space-y-4 text-center">
+            <div class="w-16 h-16 bg-purple-500/20 border border-purple-500/40 rounded-full flex items-center justify-center text-3xl text-purple-300 mx-auto">
+                <i class="fa-solid fa-bed"></i>
+            </div>
+            <div>
+                <h3 class="font-display font-bold text-xl text-white">Casa do Fazendeiro</h3>
+                <p class="text-xs text-slate-300 mt-1">Sua fazenda continua crescendo enquanto você descansa. Se for noite, você pode dormir para amanhecer instantaneamente!</p>
+            </div>
+
+            <button onclick="sleepToSkipNight()" class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-display font-bold text-sm rounded-xl shadow-lg shadow-purple-900/40 transition active:scale-95 inline-flex items-center space-x-2">
+                <i class="fa-solid fa-moon"></i>
+                <span>Dormir e Avançar para o Dia</span>
+            </button>
+        </div>
+
+        <!-- Painel de Conexão Firebase Cloud Database -->
+        <div class="glass-panel p-5 rounded-2xl border border-emerald-500/30 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-emerald-400 text-xl"></i>
+                    <h4 class="font-display font-bold text-base text-white">Sincronização Nuvem (Firebase)</h4>
+                </div>
+                <span id="cloud-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Conectando...</span>
+            </div>
+
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Seu progresso é salvo no **Firebase Realtime Database**. Guarde seu **Save ID** único para carregar o jogo em qualquer celular ou computador!
+            </p>
+
+            <div class="space-y-2">
+                <label class="text-xs font-bold text-slate-300">Seu Save ID Único:</label>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="input-save-id" readonly class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono font-bold focus:outline-none">
+                    <button onclick="copySaveId()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button onclick="saveToFirebaseManual()" class="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Salvar na Nuvem</span>
+                </button>
+                <button onclick="loadFromFirebaseManual()" class="py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Carregar Save</span>
+                </button>
+            </div>
+        </div>
+
+    </section>
+
+</main>
+
+<!-- BARRA DE NAVEGAÇÃO INFERIOR MOBILE -->
+<nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2">
+    <div class="max-w-md mx-auto flex items-center justify-around">
+        
+        <button onclick="switchTab('farm')" id="nav-btn-farm" class="nav-tab active flex flex-col items-center text-emerald-400 transition">
+            <i class="fa-solid fa-wheat-field-semi text-lg"></i>
+            <span class="text-[10px] font-bold mt-1 font-display">Fazenda</span>
+        </button>
+
+        <button onclick="switchTab('market')" id="nav-btn-market" class="nav-tab flex flex-col items-center text-slate-400 hover:text-slate-200 transition relative">
+            <i class="fa-solid fa-store text-lg"></i>
+            <span class="text-[10px] font-bold mt-1 font-display">Mercado</span>
+            <span id="market-closed-badge" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-slate-900 animate-ping"></span>
+        </button>
+
+        <button onclick="switchTab('shop')" id="nav-btn-shop" class="nav-tab flex flex-col items-center text-slate-400 hover:text-slate-200 transition">
+            <i class="fa-solid fa-shop text-lg"></i>
+            <span class="text-[10px] font-bold mt-1 font-display">Melhorias</span>
+        </button>
+
+        <button onclick="switchTab('house')" id="nav-btn-house" class="nav-tab flex flex-col items-center text-slate-400 hover:text-slate-200 transition">
+            <i class="fa-solid fa-house-user text-lg"></i>
+            <span class="text-[10px] font-bold mt-1 font-display">Casa/Save</span>
+        </button>
+
+    </div>
+</nav>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast-notif" class="fixed top-16 right-4 z-50 bg-slate-900 border border-emerald-500/50 text-white px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center space-x-2 transition-all duration-300 opacity-0 pointer-events-none translate-y-[-10px]">
+    <span id="toast-icon">✨</span>
+    <span id="toast-text">Notificação</span>
+</div>
+
+<!-- FIREBASE SDK & GAME ENGINE MODULE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+// Configuração fornecida pelo usuário
+const firebaseConfig = {
+    apiKey: "AIzaSyD3Q2P6lch9XxxYlJoEsdqqwwt3KBJgpFc",
+    authDomain: "projeto-a08cb.firebaseapp.com",
+    databaseURL: "https://projeto-a08cb-default-rtdb.firebaseio.com",
+    projectId: "projeto-a08cb",
+    storageBucket: "projeto-a08cb.firebasestorage.app",
+    messagingSenderId: "996658403778",
+    appId: "1:996658403778:web:cae105f2257b8bc49a5e5b",
+    measurementId: "G-VWLVV9P0TN"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const rtdb = getDatabase(app);
+
+// Definição das Frutas e Cultivos do Jogo
+const CROPS = {
+    wheat: { id: 'wheat', name: 'Trigo', emoji: '🌾', baseGrowTime: 30, baseValue: 10, xp: 5, unlocked: true, minLevel: 1 },
+    carrot: { id: 'carrot', name: 'Cenoura', emoji: '🥕', baseGrowTime: 120, baseValue: 35, xp: 12, unlocked: true, minLevel: 1 },
+    strawberry: { id: 'strawberry', name: 'Morango', emoji: '🍓', baseGrowTime: 300, baseValue: 110, xp: 30, unlocked: false, minLevel: 2 },
+    magicFruit: { id: 'magicFruit', name: 'Fruta Mágica de 10 min', emoji: '🍎', baseGrowTime: 600, baseValue: 320, xp: 80, unlocked: false, minLevel: 3 },
+    cosmicBerry: { id: 'cosmicBerry', name: 'Baga Cósmica', emoji: '🔮', baseGrowTime: 900, baseValue: 650, xp: 150, unlocked: false, minLevel: 5 },
+    goldenWatermelon: { id: 'goldenWatermelon', name: 'Melancia de Ouro', emoji: '🍉', baseGrowTime: 1200, baseValue: 1200, xp: 300, unlocked: false, minLevel: 7 }
+};
+
+// Estado Global do Jogador
+window.gameState = {
+    saveId: 'user_' + Math.random().toString(36).substring(2, 9),
+    gold: 50,
+    level: 1,
+    xp: 0,
+    playTimeSeconds: 0,
+    selectedSeed: 'wheat',
+    
+    // Upgrades
+    plotCount: 4,
+    speedMultiplier: 1.0, // Redução de tempo
+    autoWater: false,
+    valueMultiplier: 1.0,
+
+    // Canteiros de Plantio
+    plots: [],
+
+    // Inventário de Colheita
+    inventory: {
+        wheat: 0,
+        carrot: 0,
+        strawberry: 0,
+        magicFruit: 0,
+        cosmicBerry: 0,
+        goldenWatermelon: 0
+    },
+
+    // Estado do Ciclo Dia/Noite
+    dayTimeSeconds: 0, // 0 a 300 (5 min ciclo): 0-180 Dia (Aberto), 180-300 Noite (Fechado)
+    isNight: false,
+
+    firebaseReady: false
+};
+
+// Inicializa os Canteiros da Fazenda
+function initPlots() {
+    while (window.gameState.plots.length < window.gameState.plotCount) {
+        window.gameState.plots.push({
+            id: window.gameState.plots.length,
+            cropId: null,
+            plantedTime: 0,
+            growDuration: 0,
+            watered: false,
+            ready: false
+        });
+    }
+}
+
+async function initAuthAndDB() {
+    try {
+        await signInAnonymously(auth);
+        window.gameState.firebaseReady = true;
+        document.getElementById('cloud-status-badge').innerText = '🔥 Nuvem Conectada';
+        document.getElementById('cloud-status-badge').className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+
+        // Tenta carregar save existente do LocalStorage se houver
+        const savedLocal = localStorage.getItem('fazenda_save_id');
+        if (savedLocal) {
+            window.gameState.saveId = savedLocal;
+            await loadFromFirebase(savedLocal);
+        } else {
+            localStorage.setItem('fazenda_save_id', window.gameState.saveId);
+            saveToFirebase();
+        }
+
+        document.getElementById('input-save-id').value = window.gameState.saveId;
+    } catch (err) {
+        console.warn("Modo Offline Firebase:", err);
+        document.getElementById('cloud-status-badge').innerText = '⚠️ Modo Local Offline';
+        document.getElementById('cloud-status-badge').className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    }
+}
+
+async function saveToFirebase() {
+    if (!window.gameState.firebaseReady) {
+        localStorage.setItem('fazenda_state', JSON.stringify(window.gameState));
+        return;
+    }
+    try {
+        const dbRef = ref(rtdb, 'players/' + window.gameState.saveId);
+        await set(dbRef, {
+            ...window.gameState,
+            lastSaved: Date.now()
+        });
+    } catch (e) {
+        console.error("Erro ao salvar:", e);
+    }
+}
+
+async function loadFromFirebase(saveIdToLoad) {
+    if (!window.gameState.firebaseReady) return;
+    try {
+        const dbRef = ref(rtdb);
+        const snapshot = await get(child(dbRef, `players/${saveIdToLoad}`));
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            window.gameState = { ...window.gameState, ...data };
+            showToast("Progresso carregado da Nuvem!", "☁️");
+            renderAllUI();
+        } else {
+            showToast("Save ID não encontrado!", "❌");
+        }
+    } catch (e) {
+        console.error("Erro ao carregar:", e);
+    }
+}
+
+window.saveToFirebaseManual = function() {
+    saveToFirebase();
+    showToast("Jogo salvo com sucesso na Nuvem!", "💾");
+};
+
+window.loadFromFirebaseManual = function() {
+    const inputId = document.getElementById('input-save-id').value.trim();
+    if (inputId) {
+        window.gameState.saveId = inputId;
+        localStorage.setItem('fazenda_save_id', inputId);
+        loadFromFirebase(inputId);
+    }
+};
+
+window.copySaveId = function() {
+    const copyText = document.getElementById("input-save-id");
+    copyText.select();
+    document.execCommand("copy");
+    showToast("ID do Save copiado para a área de transferência!", "📋");
+};
+
+
+// Loop Principal do Jogo (1 segundo)
+setInterval(() => {
+    // 1. Contador de Tempo de Jogo
+    window.gameState.playTimeSeconds++;
+    updatePlayTimeUI();
+
+    // 2. Ciclo Dia/Noite (300 segundos = 5 min total: 3 min Dia, 2 min Noite)
+    window.gameState.dayTimeSeconds = (window.gameState.dayTimeSeconds + 1) % 300;
+    const isNowNight = window.gameState.dayTimeSeconds >= 180;
+    
+    if (isNowNight !== window.gameState.isNight) {
+        window.gameState.isNight = isNowNight;
+        if (isNowNight) {
+            showToast("A noite caiu! O mercado de vendas está fechado.", "🌙");
+        } else {
+            showToast("O dia amanheceu! O mercado abriu.", "☀️");
+        }
+    }
+    updateDayNightUI();
+
+    // 3. Atualização do Crescimento das Plantas
+    updatePlotsGrowth();
+
+    // 4. Auto-save periódico (a cada 30 segundos)
+    if (window.gameState.playTimeSeconds % 30 === 0) {
+        saveToFirebase();
+    }
+}, 1000);
+
+function updatePlotsGrowth() {
+    const now = Date.now();
+    let updated = false;
+
+    window.gameState.plots.forEach((plot) => {
+        if (plot.cropId && !plot.ready) {
+            // Rega automática se upgrade estiver comprado
+            if (window.gameState.autoWater && !plot.watered) {
+                plot.watered = true;
+            }
+
+            // O crescimento só progride rápido se regado (se não regado, demora o dobro)
+            const waterSpeedFactor = plot.watered ? 1.0 : 0.5;
+            const effectiveDuration = (plot.growDuration / window.gameState.speedMultiplier) / waterSpeedFactor;
+            
+            const elapsedSeconds = (now - plot.plantedTime) / 1000;
+            if (elapsedSeconds >= effectiveDuration) {
+                plot.ready = true;
+                updated = true;
+            }
+        }
+    });
+
+    renderFarmGridUI();
+}
+
+
+window.plantCrop = function(plotId) {
+    const plot = window.gameState.plots[plotId];
+    if (!plot || plot.cropId) return;
+
+    const crop = CROPS[window.gameState.selectedSeed];
+    if (!crop) return;
+
+    if (!crop.unlocked) {
+        showToast("Esta semente ainda não foi desbloqueada!", "🔒");
+        return;
+    }
+
+    plot.cropId = crop.id;
+    plot.plantedTime = Date.now();
+    plot.growDuration = crop.baseGrowTime;
+    plot.watered = window.gameState.autoWater;
+    plot.ready = false;
+
+    playAudioFx(440, 0.1);
+    renderFarmGridUI();
+};
+
+window.waterPlot = function(plotId) {
+    const plot = window.gameState.plots[plotId];
+    if (!plot || !plot.cropId || plot.watered || plot.ready) return;
+
+    plot.watered = true;
+    playAudioFx(600, 0.15);
+    renderFarmGridUI();
+};
+
+window.harvestPlot = function(plotId) {
+    const plot = window.gameState.plots[plotId];
+    if (!plot || !plot.cropId || !plot.ready) return;
+
+    const crop = CROPS[plot.cropId];
+    window.gameState.inventory[crop.id] = (window.gameState.inventory[crop.id] || 0) + 1;
+    
+    // Concede XP ao Jogador
+    addPlayerXP(crop.xp);
+
+    // Efeito Flutuante Visual
+    createFloatText(`+1 ${crop.emoji}`, event);
+
+    // Reseta o Canteiro
+    plot.cropId = null;
+    plot.plantedTime = 0;
+    plot.watered = false;
+    plot.ready = false;
+
+    playAudioFx(880, 0.2);
+    renderFarmGridUI();
+    renderMarketInventoryUI();
+};
+
+window.waterAllPlots = function() {
+    let wateredAny = false;
+    window.gameState.plots.forEach(p => {
+        if (p.cropId && !p.watered && !p.ready) {
+            p.watered = true;
+            wateredAny = true;
+        }
+    });
+    if (wateredAny) {
+        showToast("Todos os canteiros foram regados!", "💧");
+        playAudioFx(600, 0.2);
+        renderFarmGridUI();
+    }
+};
+
+window.harvestAllPlots = function() {
+    let harvestedCount = 0;
+    window.gameState.plots.forEach(p => {
+        if (p.cropId && p.ready) {
+            const crop = CROPS[p.cropId];
+            window.gameState.inventory[crop.id] = (window.gameState.inventory[crop.id] || 0) + 1;
+            addPlayerXP(crop.xp);
+            
+            p.cropId = null;
+            p.ready = false;
+            harvestedCount++;
+        }
+    });
+
+    if (harvestedCount > 0) {
+        showToast(`${harvestedCount} plantas colhidas com sucesso!`, "🌾");
+        playAudioFx(880, 0.3);
+        renderFarmGridUI();
+        renderMarketInventoryUI();
+    }
+};
+
+function addPlayerXP(amount) {
+    window.gameState.xp += amount;
+    const requiredXP = window.gameState.level * 50;
+    if (window.gameState.xp >= requiredXP) {
+        window.gameState.xp -= requiredXP;
+        window.gameState.level++;
+        showToast(`SUBIU DE NÍVEL! Agora você é Nível ${window.gameState.level}! 🎉`, "⭐");
+
+        // Desbloqueia novas sementes por nível
+        Object.values(CROPS).forEach(c => {
+            if (window.gameState.level >= c.minLevel) {
+                c.unlocked = true;
+            }
+        });
+
+        renderSeedSelectorUI();
+    }
+    updateGlobalHeaderUI();
+}
+
+
+window.sellCrop = function(cropId, quantity = 1) {
+    if (window.gameState.isNight) {
+        showToast("O Mercado está FECHADO durante a noite!", "🌙");
+        return;
+    }
+
+    const available = window.gameState.inventory[cropId] || 0;
+    if (available < quantity) return;
+
+    const crop = CROPS[cropId];
+    const totalEarnings = Math.floor(crop.baseValue * quantity * window.gameState.valueMultiplier);
+
+    window.gameState.inventory[cropId] -= quantity;
+    window.gameState.gold += totalEarnings;
+
+    showToast(`Vendeu ${quantity}x ${crop.name} por +${totalEarnings} 🪙`, "💰");
+    playAudioFx(1200, 0.2);
+
+    updateGlobalHeaderUI();
+    renderMarketInventoryUI();
+};
+
+window.sellAllCrops = function() {
+    if (window.gameState.isNight) {
+        showToast("O Mercado está FECHADO durante a noite!", "🌙");
+        return;
+    }
+
+    let totalEarned = 0;
+    Object.keys(window.gameState.inventory).forEach(cropId => {
+        const qty = window.gameState.inventory[cropId] || 0;
+        if (qty > 0) {
+            const crop = CROPS[cropId];
+            totalEarned += Math.floor(crop.baseValue * qty * window.gameState.valueMultiplier);
+            window.gameState.inventory[cropId] = 0;
+        }
+    });
+
+    if (totalEarned > 0) {
+        window.gameState.gold += totalEarned;
+        showToast(`Toda a safra vendida por +${totalEarned} Ouro!`, "💰");
+        playAudioFx(1400, 0.3);
+        updateGlobalHeaderUI();
+        renderMarketInventoryUI();
+    } else {
+        showToast("Seu armazém está vazio!", "📦");
+    }
+};
+
+window.sleepToSkipNight = function() {
+    if (!window.gameState.isNight) {
+        showToast("Ainda é dia! Você só pode dormir durante a noite.", "☀️");
+        return;
+    }
+
+    window.gameState.dayTimeSeconds = 0;
+    window.gameState.isNight = false;
+    showToast("Você dormiu profundamente. Bom dia, fazendeiro!", "☀️");
+    updateDayNightUI();
+    saveToFirebase();
+};
+
+
+const UPGRADES = [
+    {
+        id: 'expand_plots',
+        title: 'Expansão de Terreno (+2 Canteiros)',
+        desc: 'Aumenta a quantidade de espaço para plantio na fazenda.',
+        icon: 'fa-vector-square',
+        cost: level => level * 150,
+        apply: () => {
+            window.gameState.plotCount += 2;
+            initPlots();
+        }
+    },
+    {
+        id: 'growth_speed',
+        title: 'Fertilizante Acelerador (-15% Tempo)',
+        desc: 'Faz com que todas as sementes cresçam mais rápido.',
+        icon: 'fa-bolt',
+        cost: level => Math.floor(level * 200 * 1.5),
+        apply: () => {
+            window.gameState.speedMultiplier += 0.15;
+        }
+    },
+    {
+        id: 'auto_irrigation',
+        title: 'Irrigação Automática',
+        desc: 'Regagem automática para todos os canteiros assim que plantados.',
+        icon: 'fa-faucet-drip',
+        maxLevel: 1,
+        cost: () => 500,
+        apply: () => {
+            window.gameState.autoWater = true;
+        }
+    },
+    {
+        id: 'golden_fertilizer',
+        title: 'Fertilizante Ouro (+20% Valor Venda)',
+        desc: 'Aumenta o preço de venda de todas as frutas no Mercado.',
+        icon: 'fa-sack-dollar',
+        cost: level => level * 300,
+        apply: () => {
+            window.gameState.valueMultiplier += 0.20;
+        }
+    }
+];
+
+window.gameState.upgradeLevels = {
+    expand_plots: 1,
+    growth_speed: 1,
+    auto_irrigation: 0,
+    golden_fertilizer: 1
+};
+
+window.buyUpgrade = function(upgradeId) {
+    const upg = UPGRADES.find(u => u.id === upgradeId);
+    const currentLvl = window.gameState.upgradeLevels[upgradeId] || 0;
+
+    if (upg.maxLevel && currentLvl >= upg.maxLevel) {
+        showToast("Nível máximo já atingido!", "⭐");
+        return;
+    }
+
+    const cost = upg.cost(currentLvl);
+    if (window.gameState.gold < cost) {
+        showToast("Ouro insuficiente para esta melhoria!", "⚠️");
+        return;
+    }
+
+    window.gameState.gold -= cost;
+    window.gameState.upgradeLevels[upgradeId] = currentLvl + 1;
+    upg.apply();
+
+    showToast(`Melhoria "${upg.title}" comprada!`, "🛠️");
+    playAudioFx(1000, 0.25);
+
+    updateGlobalHeaderUI();
+    renderUpgradesUI();
+    renderFarmGridUI();
+};
+
+
+function updateGlobalHeaderUI() {
+    document.getElementById('gold-display').innerText = window.gameState.gold.toLocaleString('pt-BR');
+    document.getElementById('player-level').innerText = window.gameState.level;
+
+    const requiredXP = window.gameState.level * 50;
+    const xpPercent = Math.min(100, (window.gameState.xp / requiredXP) * 100);
+    document.getElementById('xp-bar').style.width = `${xpPercent}%`;
+}
+
+function updatePlayTimeUI() {
+    const h = Math.floor(window.gameState.playTimeSeconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((window.gameState.playTimeSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (window.gameState.playTimeSeconds % 60).toString().padStart(2, '0');
+    document.getElementById('play-time-display').innerText = `${h}h ${m}m ${s}s`;
+}
+
+function updateDayNightUI() {
+    const ind = document.getElementById('day-night-indicator');
+    const icon = document.getElementById('day-night-icon');
+    const text = document.getElementById('day-night-text');
+    const marketBadge = document.getElementById('market-closed-badge');
+
+    if (window.gameState.isNight) {
+        ind.className = "px-3 py-1 rounded-full bg-indigo-900/60 border border-indigo-500/40 text-indigo-300 text-xs font-bold flex items-center space-x-1.5 shadow-sm";
+        icon.className = "fa-solid fa-moon text-indigo-300 text-sm";
+        text.innerText = "Noite (🌙 22:00)";
+        marketBadge.classList.remove('hidden');
+        document.body.className = "min-h-screen flex flex-col justify-between overflow-x-hidden pb-20 md:pb-0 bg-slate-950 text-slate-100 transition-colors duration-1000";
+    } else {
+        ind.className = "px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center space-x-1.5 shadow-sm";
+        icon.className = "fa-solid fa-sun text-amber-400 text-sm";
+        text.innerText = "Dia (☀️ 12:00)";
+        marketBadge.classList.add('hidden');
+        document.body.className = "min-h-screen flex flex-col justify-between overflow-x-hidden pb-20 md:pb-0 bg-[#0d1b2a] text-slate-100 transition-colors duration-1000";
+    }
+
+    renderMarketStatusUI();
+}
+
+function renderSeedSelectorUI() {
+    const container = document.getElementById('seed-selector-container');
+    container.innerHTML = '';
+
+    Object.values(CROPS).forEach(crop => {
+        const isSelected = window.gameState.selectedSeed === crop.id;
+        const btn = document.createElement('button');
+        btn.className = `px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center space-x-1.5 border ${
+            !crop.unlocked 
+                ? 'bg-slate-800 text-slate-500 border-slate-700 opacity-60 cursor-not-allowed'
+                : isSelected
+                    ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-900/40'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+        }`;
+
+        btn.innerHTML = `
+            <span>${crop.emoji}</span>
+            <span>${crop.name}</span>
+            ${!crop.unlocked ? `<span class="text-[9px] text-amber-400">(Nvl ${crop.minLevel})</span>` : ''}
+        `;
+
+        if (crop.unlocked) {
+            btn.onclick = () => {
+                window.gameState.selectedSeed = crop.id;
+                document.getElementById('selected-seed-name').innerText = `${crop.name} (${formatTime(crop.baseGrowTime)})`;
+                renderSeedSelectorUI();
+            };
+        }
+
+        container.appendChild(btn);
+    });
+}
+
+function renderFarmGridUI() {
+    initPlots();
+    const grid = document.getElementById('farm-plots-grid');
+    grid.innerHTML = '';
+
+    const now = Date.now();
+
+    window.gameState.plots.forEach((plot) => {
+        const card = document.createElement('div');
+        
+        if (!plot.cropId) {
+            // Canteiro Vazio
+            card.className = "bg-amber-950/40 hover:bg-amber-900/40 border-2 border-dashed border-amber-800/60 rounded-2xl p-4 flex flex-col items-center justify-center space-y-2 cursor-pointer transition min-h-[140px]";
+            card.onclick = () => window.plantCrop(plot.id);
+            card.innerHTML = `
+                <i class="fa-solid fa-plus-circle text-amber-600/60 text-2xl"></i>
+                <span class="text-[11px] font-bold text-amber-500/80 uppercase">Canteiro Vazio</span>
+                <span class="text-[10px] text-slate-500">Toque para plantar</span>
+            `;
+        } else {
+            const crop = CROPS[plot.cropId];
+            
+            // Cálculo do tempo restante
+            const waterFactor = plot.watered ? 1.0 : 0.5;
+            const effectiveDuration = (plot.growDuration / window.gameState.speedMultiplier) / waterFactor;
+            const elapsed = (now - plot.plantedTime) / 1000;
+            const remaining = Math.max(0, effectiveDuration - elapsed);
+            const progressPercent = Math.min(100, (elapsed / effectiveDuration) * 100);
+
+            if (plot.ready) {
+                // Pronto para Colher
+                card.className = "bg-gradient-to-b from-emerald-900/80 to-teal-950/80 border-2 border-emerald-400 rounded-2xl p-3 flex flex-col items-center justify-between ready-harvest cursor-pointer shadow-xl min-h-[140px]";
+                card.onclick = (e) => window.harvestPlot(plot.id);
+                card.innerHTML = `
+                    <span class="text-3xl">${crop.emoji}</span>
+                    <span class="text-xs font-bold text-emerald-300 font-display">${crop.name} Pronto!</span>
+                    <span class="px-3 py-1 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-extrabold uppercase shadow-md">Colher!</span>
+                `;
+            } else {
+                // Em Crescimento
+                card.className = "bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3 flex flex-col items-center justify-between min-h-[140px] space-y-2";
+                
+                card.innerHTML = `
+                    <div class="flex items-center justify-between w-full">
+                        <span class="text-xl opacity-70">${crop.emoji}</span>
+                        ${!plot.watered 
+                            ? `<button onclick="waterPlot(${plot.id})" class="px-2 py-0.5 bg-blue-600/80 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold animate-pulse"><i class="fa-solid fa-droplet"></i> Regar</button>`
+                            : `<span class="text-[10px] text-cyan-400 font-semibold"><i class="fa-solid fa-check"></i> Regado</span>`
+                        }
+                    </div>
+
+                    <div class="text-center">
+                        <span class="text-[11px] font-bold text-slate-300 block">${crop.name}</span>
+                        <span class="text-xs font-mono font-bold text-amber-400">${formatTime(Math.ceil(remaining))}</span>
+                    </div>
+
+                    <!-- Barra de Progresso com Timer -->
+                    <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                        <div class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full transition-all duration-500" style="width: ${progressPercent}%"></div>
+                    </div>
+                `;
+            }
+        }
+
+        grid.appendChild(card);
+    });
+}
+
+function renderMarketStatusUI() {
+    const banner = document.getElementById('market-status-banner');
+    const icon = document.getElementById('market-status-icon');
+    const title = document.getElementById('market-status-title');
+    const desc = document.getElementById('market-status-desc');
+    const btnSellAll = document.getElementById('btn-sell-all');
+
+    if (window.gameState.isNight) {
+        banner.className = "p-4 rounded-2xl border transition-all duration-500 flex items-center justify-between shadow-lg bg-rose-950/60 border-rose-500/40";
+        icon.className = "w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-2xl";
+        icon.innerHTML = `<i class="fa-solid fa-store-slash"></i>`;
+        title.innerText = "Mercado Fechado (Noite)";
+        desc.innerText = "Os compradores dormem durante a noite. Volte quando amanhecer ou durma na Casa!";
+        btnSellAll.disabled = true;
+        btnSellAll.className = "px-5 py-2.5 bg-slate-800 text-slate-500 font-display font-bold text-xs rounded-xl border border-slate-700 cursor-not-allowed opacity-60";
+    } else {
+        banner.className = "p-4 rounded-2xl border transition-all duration-500 flex items-center justify-between shadow-lg bg-emerald-950/60 border-emerald-500/40";
+        icon.className = "w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl";
+        icon.innerHTML = `<i class="fa-solid fa-store"></i>`;
+        title.innerText = "Mercado Aberto!";
+        desc.innerText = "Os feirantes estão prontos para comprar suas colheitas frescas.";
+        btnSellAll.disabled = false;
+        btnSellAll.className = "px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-bold text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center space-x-1.5 cursor-pointer";
+    }
+}
+
+function renderMarketInventoryUI() {
+    const list = document.getElementById('market-inventory-list');
+    list.innerHTML = '';
+
+    let hasItems = false;
+
+    Object.keys(window.gameState.inventory).forEach(cropId => {
+        const qty = window.gameState.inventory[cropId] || 0;
+        if (qty > 0) {
+            hasItems = true;
+            const crop = CROPS[cropId];
+            const unitPrice = Math.floor(crop.baseValue * window.gameState.valueMultiplier);
+
+            const card = document.createElement('div');
+            card.className = "bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between space-x-3";
+            card.innerHTML = `
+                <div class="flex items-center space-x-2.5">
+                    <span class="text-2xl">${crop.emoji}</span>
+                    <div>
+                        <h5 class="text-xs font-bold text-white">${crop.name}</h5>
+                        <p class="text-[10px] text-slate-400">Preço Un: <span class="text-amber-400 font-bold">${unitPrice} 🪙</span></p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <span class="px-2 py-0.5 bg-slate-800 text-emerald-400 rounded-lg text-xs font-bold border border-slate-700">${qty}x</span>
+                    <button onclick="sellCrop('${cropId}', 1)" ${window.gameState.isNight ? 'disabled' : ''} class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 rounded-lg text-xs font-bold transition">
+                        Vender 1
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+        }
+    });
+
+    if (!hasItems) {
+        list.innerHTML = `<p class="text-xs text-slate-500 italic py-6 text-center col-span-full">Seu armazém está vazio. Colha plantas na Fazenda para vender aqui!</p>`;
+    }
+}
+
+function renderUpgradesUI() {
+    const container = document.getElementById('upgrades-list');
+    container.innerHTML = '';
+
+    UPGRADES.forEach(upg => {
+        const currentLvl = window.gameState.upgradeLevels[upg.id] || 0;
+        const isMax = upg.maxLevel && currentLvl >= upg.maxLevel;
+        const cost = isMax ? 0 : upg.cost(currentLvl);
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between space-y-3";
+        card.innerHTML = `
+            <div class="flex items-start space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-lg shrink-0">
+                    <i class="fa-solid ${upg.icon}"></i>
+                </div>
+                <div>
+                    <h5 class="text-xs font-bold text-white font-display">${upg.title}</h5>
+                    <p class="text-[10px] text-slate-400 mt-0.5">${upg.desc}</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between border-t border-slate-800/80 pt-2 text-xs">
+                <span class="text-slate-400 text-[10px]">Nível: <b class="text-indigo-400">${currentLvl}</b></span>
+                
+                <button onclick="buyUpgrade('${upg.id}')" ${isMax ? 'disabled' : ''} class="px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center space-x-1 ${
+                    isMax 
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/30'
+                }">
+                    ${isMax ? 'MÁXIMO' : `<i class="fa-solid fa-coins text-amber-400 mr-1"></i> ${cost}`}
+                </button>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+function renderAllUI() {
+    updateGlobalHeaderUI();
+    updatePlayTimeUI();
+    updateDayNightUI();
+    renderSeedSelectorUI();
+    renderFarmGridUI();
+    renderMarketInventoryUI();
+    renderUpgradesUI();
+}
+
+
+window.switchTab = function(tabName) {
+    const tabs = ['farm', 'market', 'shop', 'house'];
+    tabs.forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`nav-btn-${t}`);
+        if (t === tabName) {
+            view.classList.remove('hidden');
+            btn.className = "nav-tab active flex flex-col items-center text-emerald-400 transition";
+        } else {
+            view.classList.add('hidden');
+            btn.className = "nav-tab flex flex-col items-center text-slate-400 hover:text-slate-200 transition relative";
+        }
+    });
+
+    if (tabName === 'market') renderMarketInventoryUI();
+    if (tabName === 'shop') renderUpgradesUI();
+};
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    if (m > 0) {
+        return `${m}m ${s.toString().padStart(2, '0')}s`;
+    }
+    return `${s}s`;
+}
+
+function showToast(msg, icon = '✨') {
+    const toast = document.getElementById('toast-notif');
+    document.getElementById('toast-text').innerText = msg;
+    document.getElementById('toast-icon').innerText = icon;
+    toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+    }, 3000);
+}
+
+function createFloatText(text, event) {
+    if (!event) return;
+    const el = document.createElement('div');
+    el.className = 'float-text text-amber-300 text-sm';
+    el.innerText = text;
+    el.style.left = `${event.clientX || window.innerWidth / 2}px`;
+    el.style.top = `${event.clientY || window.innerHeight / 2}px`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+}
+
+function playAudioFx(freq = 440, typeDuration = 0.1) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + typeDuration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + typeDuration);
+    } catch (e) {}
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    initPlots();
+    renderAllUI();
+    initAuthAndDB();
+});
+</script>
+</body>
+</html>
